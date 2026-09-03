@@ -80,7 +80,7 @@ touches either.
 
 ## Getting started
 
-**Requirements** — Node.js 18 or later (developed on Node 20).
+**Requirements** — Node.js 18 or later (developed on Node 22.22.2 ).
 
 ```bash
 npm install
