@@ -7,6 +7,13 @@ Playwright configuration, without their selectors, page objects or fixtures ever
 mixing. It doubles as a reference for component-based Playwright architecture, so the
 code favours clarity over framework machinery.
 
+### Sites under test
+
+| Site                                              | Suite                                | Covers                                                |
+| ------------------------------------------------- | ------------------------------------ | ----------------------------------------------------- |
+| [playwright.dev](https://playwright.dev)          | `tests/sites/playwright/`            | Navbar routing, docs sidebar, documentation language   |
+| [saucedemo.com](https://www.saucedemo.com)        | `tests/sites/saucedemo/`             | Sign-in, form validation, sign-out and session end     |
+
 ---
 
 ## Architecture
@@ -34,6 +41,7 @@ Spec  ──uses──▶  Fixture  ──provides──▶  Page Object  ──
 | **Page object** | `sites/<site>/pages/`         | One meaningful screen. Owns what is unique to that screen.                 |
 | **Component**   | `sites/<site>/components/`    | A reusable widget shared by several pages — navbar, sidebar, modal, table. |
 | **Site config** | `sites/<site>/site.config.ts` | Base URL, named routes, site-level constants.                              |
+| **Data**        | `sites/<site>/data/`          | Fixture data — accounts, expected copy. Only where a site has some.        |
 
 ### Directory layout
 
@@ -43,34 +51,47 @@ omitted.
 
 ```
 playwright_automations/
-├── .github/                           GitHub metadata
+├── .github/                            GitHub metadata
 │   └── workflows/
-│       └── playwright.yml             CI: runs the full suite on push and pull request
+│       └── playwright.yml              CI: runs the full suite on push and pull request
 ├── docs/
-│   └── guide.md                       Architecture brief this structure was built from
-├── sites/                             ── SITE IMPLEMENTATION: how each site is driven ──
-│   └── playwright/                    Everything specific to playwright.dev
-│       ├── components/                Reusable widgets shared across this site's pages
-│       │   ├── DocsSidebar.ts         Collapsible documentation article tree
-│       │   └── MainNavigation.ts      Top navbar: Docs · MCP · CLI · API · languages
+│   └── guide.md                        Architecture brief this structure was built from
+├── sites/                              ── SITE IMPLEMENTATION: how each site is driven ──
+│   ├── playwright/                     Everything specific to playwright.dev
+│   │   ├── components/                 Reusable widgets shared across this site's pages
+│   │   │   ├── DocsSidebar.ts          Collapsible documentation article tree
+│   │   │   └── MainNavigation.ts       Top navbar: Docs · MCP · CLI · API · languages
+│   │   ├── fixtures/
+│   │   │   └── test.ts                 Site-scoped `test`/`expect` injecting page objects
+│   │   ├── pages/                      One class per meaningful screen
+│   │   │   ├── DocsPage.ts             Any documentation article (shared docs layout)
+│   │   │   └── PlaywrightHomePage.ts   Landing page: hero and call to action
+│   │   └── site.config.ts              baseURL, named routes, playwrightUrl(), languages
+│   └── saucedemo/                      Everything specific to saucedemo.com (Swag Labs)
+│       ├── components/
+│       │   └── AppMenu.ts              Burger menu: sign-out and session actions
+│       ├── data/                       Fixture data owned by this site alone
+│       │   └── users.ts                Published demo accounts and expected error copy
 │       ├── fixtures/
-│       │   └── test.ts                Site-scoped `test`/`expect` injecting page objects
-│       ├── pages/                     One class per meaningful screen
-│       │   ├── DocsPage.ts            Any documentation article (shared docs layout)
-│       │   └── PlaywrightHomePage.ts  Landing page: hero and primary call to action
-│       └── site.config.ts             baseURL, named routes, playwrightUrl(), languages
-├── tests/                             ── TEST SCENARIOS: what is being tested ──
-│   ├── sites/                         Specs grouped by the site under test
-│   │   └── playwright/
-│   │       └── navigation.spec.ts     Navbar, docs sidebar and language switching
-│   └── example.spec.ts                Plain-Playwright starter specs, kept as a reference
-├── .gitignore                         Dependencies, reports and local scratch specs
-├── README.md                          This file
-├── command.md                         Personal Playwright CLI notes
-├── package.json                       Dependencies and the test / typecheck scripts
-├── package-lock.json                  Locked dependency graph
-├── playwright.config.ts               Single Playwright config — testDir: "./tests"
-└── tsconfig.json                      Strict type-checking for tests and site code
+│       │   └── test.ts                 Site-scoped `test`/`expect`, separate from the above
+│       ├── pages/
+│       │   ├── InventoryPage.ts        Product catalogue behind the sign-in gate
+│       │   └── LoginPage.ts            Sign-in form and its validation messages
+│       └── site.config.ts              baseURL, routes, byTestId() for data-test hooks
+├── tests/                              ── TEST SCENARIOS: what is being tested ──
+│   ├── sites/                          Specs grouped by the site under test
+│   │   ├── playwright/
+│   │   │   └── navigation.spec.ts      Navbar, docs sidebar and language switching
+│   │   └── saucedemo/
+│   │       └── authentication.spec.ts  Sign-in, validation and sign-out journeys
+│   └── example.spec.ts                 Plain-Playwright starter specs, kept as a reference
+├── .gitignore                          Dependencies, reports and local scratch specs
+├── README.md                           This file
+├── command.md                          Personal Playwright CLI notes
+├── package.json                        Dependencies and the test / typecheck scripts
+├── package-lock.json                   Locked dependency graph
+├── playwright.config.ts                Single Playwright config — testDir: "./tests"
+└── tsconfig.json                       Strict type-checking for tests and site code
 ```
 
 There is exactly **one** Playwright config and **one** test root. Adding a website never
@@ -106,7 +127,7 @@ The suite runs against **Chromium, Firefox and WebKit** as configured in
 | `npx playwright test --headed`                   | Watch the browser as it runs                     |
 | `npx playwright test --debug`                    | Step through with the Playwright Inspector       |
 | `npx playwright test --project=chromium`         | Restrict to one browser                          |
-| `npx playwright test tests/sites/playwright`     | Run one directory                                |
+| `npx playwright test tests/sites/saucedemo`      | Run one site's suite                             |
 | `npx playwright test navigation`                 | Run specs whose filename matches `navigation`    |
 | `npx playwright test -g "language switcher"`     | Run tests whose title matches                    |
 | `npx playwright test tests/example.spec.ts:10`   | Run the test starting at line 10                 |
@@ -189,17 +210,24 @@ a meaningful assertion.
 ## Adding a new website
 
 Nothing global changes — no edit to `playwright.config.ts`, no second config, no new test
-root. Using `saucedemo` as an example:
+root, no shared code touched. **saucedemo.com is the worked example**: it was added
+entirely by creating new files.
 
-**1. Create the site implementation.**
+**1. Create the site implementation.** Only the directories the site actually needs.
 
 ```
 sites/saucedemo/
-├── site.config.ts
-├── components/
-├── pages/
+├── site.config.ts       base URL, routes, selector convention
+├── data/users.ts        accounts and expected error copy
+├── components/AppMenu.ts
+├── pages/LoginPage.ts
+├── pages/InventoryPage.ts
 └── fixtures/test.ts
 ```
+
+`data/` exists here because Swag Labs publishes a fixed roster of demo accounts.
+`sites/playwright/` has no such roster and has no `data/` directory — build the layer when
+the site needs it, not before.
 
 **2. Define the site's config.**
 
@@ -208,6 +236,16 @@ export const sauceDemoSite = {
   baseURL: "https://www.saucedemo.com",
   routes: { login: "/", inventory: "/inventory.html" },
 } as const;
+```
+
+Each site's selector convention lives here too. Swag Labs ships `data-test` hooks, so it
+resolves them locally rather than setting Playwright's global `testIdAttribute` — that
+setting is shared, and `data-test` is one site's convention:
+
+```ts
+export function byTestId(id: string): string {
+  return `[data-test="${id}"]`;
+}
 ```
 
 **3. Export a site-scoped fixture.**
@@ -227,8 +265,22 @@ export { expect } from "@playwright/test";
 
 **4. Add specs under `tests/sites/saucedemo/`.**
 
+```ts
+test("a standard user reaches the product catalogue", async ({
+  page,
+  loginPage,
+  inventoryPage,
+}) => {
+  await loginPage.open();
+  await loginPage.signIn(users.standard);
+
+  await expect(page).toHaveURL(sauceDemoUrl(routes.inventory));
+  await expect(inventoryPage.title).toHaveText("Products");
+});
+```
+
 Each site exports its _own_ `test`, so fixtures can never leak between sites and no single
-global fixture object grows without bound.
+global fixture type grows without bound as sites are added.
 
 ---
 
