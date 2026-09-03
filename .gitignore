@@ -7,3 +7,8 @@ node_modules/
 /playwright/.cache/
 /playwright/.auth/
 tests/test1.spec.ts
+
+# Local credentials — never commit. Template lives in .env.example
+.env
+.env.*
+!.env.example
