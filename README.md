@@ -85,7 +85,8 @@ playwright_automations/
 │   │   └── saucedemo/
 │   │       └── authentication.spec.ts  Sign-in, validation and sign-out journeys
 │   └── example.spec.ts                 Plain-Playwright starter specs, kept as a reference
-├── .gitignore                          Dependencies, reports and local scratch specs
+├── .env.example                        Template for the git-ignored .env — copy and fill in
+├── .gitignore                          Dependencies, reports, .env and scratch specs
 ├── README.md                           This file
 ├── command.md                          Personal Playwright CLI notes
 ├── package.json                        Dependencies and the test / typecheck scripts
@@ -106,7 +107,30 @@ touches either.
 ```bash
 npm install
 npx playwright install --with-deps
+cp .env.example .env      # then fill in the credentials
 ```
+
+### Credentials
+
+Sign-in credentials are read from the environment and are never committed.
+
+- **Locally** they come from a git-ignored `.env` at the repository root. Copy
+  `.env.example`, fill it in, and it is picked up automatically.
+- **In CI** the same variable names come from the repository's Actions secrets — see
+  [Continuous integration](#continuous-integration).
+
+| Variable                    | Required | Purpose                                             |
+| --------------------------- | -------- | --------------------------------------------------- |
+| `SAUCEDEMO_USER`            | yes      | Swag Labs standard account used by happy-path tests |
+| `SAUCEDEMO_PASSWORD`        | yes      | Password for the Swag Labs accounts                 |
+| `SAUCEDEMO_LOCKED_OUT_USER` | no       | Blocked account; defaults to `locked_out_user`      |
+
+A missing variable fails immediately with a message naming it, rather than submitting an
+empty form and surfacing later as a confusing assertion failure.
+
+The `.env` is loaded by `sites/saucedemo/data/users.ts`, not by `playwright.config.ts`:
+these credentials belong to one site, and playwright.dev needs no sign-in and should not
+inherit an environment requirement from a sibling site.
 
 ### Run the suite
 
@@ -303,6 +327,8 @@ as it grows, not to add ceremony.
 7. **Assert outcomes, not actions.** Verify the resulting URL, heading or state — never
    that a click merely executed.
 8. **Name routes in `site.config.ts`** so a site restructure is a one-line change.
+9. **Credentials come from the environment**, never from source. Each site loads its own
+   and fails loudly when a variable is missing.
 
 ---
 
@@ -311,6 +337,19 @@ as it grows, not to add ceremony.
 `.github/workflows/playwright.yml` runs the full suite on every push and pull request
 against `main`/`master`, and uploads the HTML report as a build artifact with 30-day
 retention.
+
+Credentials are injected into the test step from repository secrets:
+
+```yaml
+- name: Run Playwright tests
+  run: npx playwright test
+  env:
+    SAUCEDEMO_USER: ${{ secrets.SAUCEDEMO_USER }}
+    SAUCEDEMO_PASSWORD: ${{ secrets.SAUCEDEMO_PASSWORD }}
+```
+
+Add them under **Settings → Secrets and variables → Actions**. The names must match
+exactly, or the run fails on the first spec that needs them.
 
 ---
 
