@@ -54,3 +54,23 @@ npx playwright test .tests/example.spec.ts:10
 ## codegen
 
 npx playwright codegen --browser=chromium
+
+## codegen to write the generated tests to a file
+
+npx playwright codegen --target typescript -o tests/test1.spec.ts saucedemo.com
+
+## adding viewport size(screen resolution)
+
+npx playwright codegen --viewport-size 800,600
+
+## emulate device
+
+npx playwright codegen --device="iPhone 12 Pro"
+
+## emulate color scheme, if avaibale in a website
+
+npx playwright codegen --color-scheme=dark
+
+## for help
+
+npx playwright codegen --help
