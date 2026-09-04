@@ -12,3 +12,5 @@ tests/test1.spec.ts
 .env
 .env.*
 !.env.example
+
+docs
