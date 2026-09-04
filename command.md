@@ -74,3 +74,11 @@ npx playwright codegen --color-scheme=dark
 ## for help
 
 npx playwright codegen --help
+
+## setting trace if not on config
+
+npx playwright test --trace on|off|on-first-retry|retain-on-failure
+
+## show trace
+
+npx playwright show-trace test-results/test1-test-chromium-retry1/trace.zip
